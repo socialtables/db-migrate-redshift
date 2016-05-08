@@ -271,7 +271,7 @@ var PgDriver = Base.extend({
 
         if (spec.primaryKey && options.emitPrimaryKey) {
             if (spec.autoIncrement) {
-                constraint.push('SERIAL');
+                constraint.push('IDENTITY(0, 1)');
             }
             constraint.push('PRIMARY KEY');
         }
