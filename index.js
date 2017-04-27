@@ -50,6 +50,73 @@ var PgDriver = Base.extend({
                  constraints: [name, type, len, constraint.constraints].join(' ') };
     },
 
+    createTable: function(tableName, options, callback) {
+        log.verbose('creating table:', tableName);
+        var columnSpecs = options;
+        var tableOptions = {};
+
+        if (options.columns !== undefined) {
+          columnSpecs = options.columns;
+          delete options.columns;
+          tableOptions = options;
+        }
+
+        var ifNotExistsSql = "";
+        if(tableOptions.ifNotExists) {
+          ifNotExistsSql = "IF NOT EXISTS";
+        }
+
+        var primaryKeyColumns = [];
+        var columnDefOptions = {
+          emitPrimaryKey: false
+        };
+
+        for (var columnName in columnSpecs) {
+          var columnSpec = this.normalizeColumnSpec(columnSpecs[columnName]);
+          columnSpecs[columnName] = columnSpec;
+          if (columnSpec.primaryKey) {
+            primaryKeyColumns.push(columnName);
+          }
+        }
+
+        var pkSql = '';
+        if (primaryKeyColumns.length > 1) {
+          pkSql = util.format(', PRIMARY KEY (%s)',
+            this.quoteDDLArr(primaryKeyColumns).join(', '));
+
+        } else {
+          columnDefOptions.emitPrimaryKey = true;
+        }
+
+        var columnDefs = [];
+        var foreignKeys = [];
+        var sortKeys = [];
+        for (var columnName in columnSpecs) {
+          var columnSpec = columnSpecs[columnName];
+          var constraint = this.createColumnDef(columnName, columnSpec, columnDefOptions, tableName);
+          if (columnSpec.sortKey) {
+              sortKeys.push(columnName);
+          }
+          columnDefs.push(constraint.constraints);
+          if (constraint.foreignKey)
+            foreignKeys.push(constraint.foreignKey);
+        }
+
+        var sortKeySql = "";
+        if (sortKeys.length) {
+            sortKeySql = "sortkey(" + sortKeys.join(", ") + ")";
+        }
+
+        var sql = util.format('CREATE TABLE %s %s (%s%s) %s', ifNotExistsSql,
+          this.escapeDDL(tableName), columnDefs.join(', '), pkSql, sortKeySql);
+
+        return this.runSql(sql)
+        .then(function()
+        {
+            return this.recurseCallbackArray(foreignKeys);
+        }.bind(this)).nodeify(callback);
+    },
+
     mapDataType: function(str) {
         switch(str) {
           case type.STRING:
@@ -282,10 +349,6 @@ var PgDriver = Base.extend({
 
         if (spec.unique) {
             constraint.push('UNIQUE');
-        }
-
-        if (spec.sortKey) {
-            constraint.push('sortkey');
         }
 
         if (spec.defaultValue !== undefined) {
