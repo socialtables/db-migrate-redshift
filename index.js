@@ -284,6 +284,10 @@ var PgDriver = Base.extend({
             constraint.push('UNIQUE');
         }
 
+        if (spec.sortKey) {
+            constraint.push('sortkey');
+        }
+
         if (spec.defaultValue !== undefined) {
             constraint.push('DEFAULT');
             if (typeof spec.defaultValue == 'string'){
