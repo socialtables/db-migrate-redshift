@@ -91,10 +91,14 @@ var PgDriver = Base.extend({
         var columnDefs = [];
         var foreignKeys = [];
         var sortKeys = [];
+        var sortKeyType = "compound";
         for (var columnName in columnSpecs) {
           var columnSpec = columnSpecs[columnName];
           var constraint = this.createColumnDef(columnName, columnSpec, columnDefOptions, tableName);
           if (columnSpec.sortKey) {
+              if (columnSpec.sortKey === "interleaved") {
+                  sortKeyType = "interleaved"
+              }
               sortKeys.push(columnName);
           }
           columnDefs.push(constraint.constraints);
@@ -104,7 +108,7 @@ var PgDriver = Base.extend({
 
         var sortKeySql = "";
         if (sortKeys.length) {
-            sortKeySql = "sortkey(" + sortKeys.join(", ") + ")";
+            sortKeySql = sortKeyType + " sortkey(" + sortKeys.join(", ") + ")";
         }
 
         var sql = util.format('CREATE TABLE %s %s (%s%s) %s', ifNotExistsSql,
