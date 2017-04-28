@@ -91,13 +91,13 @@ var PgDriver = Base.extend({
         var columnDefs = [];
         var foreignKeys = [];
         var sortKeys = [];
-        var sortKeyType = "compound";
+        var sortKeyType = type.SORTKEY_COMPOUND;
         for (var columnName in columnSpecs) {
           var columnSpec = columnSpecs[columnName];
           var constraint = this.createColumnDef(columnName, columnSpec, columnDefOptions, tableName);
           if (columnSpec.sortKey) {
-              if (columnSpec.sortKey === "interleaved") {
-                  sortKeyType = "interleaved"
+              if (columnSpec.sortKey === type.SORTKEY_INTERLEAVED) {
+                  sortKeyType = type.SORTKEY_INTERLEAVED;
               }
               sortKeys.push(columnName);
           }
@@ -129,6 +129,10 @@ var PgDriver = Base.extend({
             return 'TIMESTAMP';
           case type.BLOB:
             return 'BYTEA';
+          case type.SORTKEY_COMPOUND:
+            return 'compound';
+          case type.SORTKEY_INTERLEAVED:
+            return 'interleaved'
         }
         return this._super(str);
     },
@@ -559,7 +563,7 @@ exports.connect = function(config, intern, callback) {
     internals = intern;
 
     log = intern.mod.log;
-    type = intern.mod.type;
+    type = Object.assign(intern.mod.type, { SORTKEY_COMPOUND: "compound", SORTKEY_INTERLEAVED: "interleaved" })
 
     if (config.native) { pg = pg.native; }
     var db = config.db || new pg.Client(config);
